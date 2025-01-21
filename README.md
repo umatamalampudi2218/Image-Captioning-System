@@ -87,9 +87,6 @@ Contributions are welcome! If you find a bug or have a suggestion, please open a
    
 5. Open a pull request.
 
-## License
-
-This project is licensed under the MIT License. See the LICENSE file for details.
 
 ## Acknowledgments
 
