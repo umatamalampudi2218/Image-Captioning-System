@@ -1,0 +1,369 @@
+---
+title: "CIS8392 - Group 4 - Flickr Classification Analysis"
+author: Meghana Garaga | Manoj Kumar Potnuru | Aushutosh Mishra | Uma Shankari Tamalampudi
+date: "12/06/2023"
+output: html_document
+---
+
+## 1.Problem Statement
+  
+Design and implement a classification analysis system for images retrieved from Flickr, focusing on a specific set of categories.
+
+
+## 2.URL Link for the data we collected using APIs 
+
+We have used a Flickr API methods to collect the data that we wanted for our classification.The link is as follows
+https://drive.google.com/drive/folders/1LYbF_gszFL7ZikmZ04gLUw_oUcT20VP6?usp=drive_link
+
+## 3.A Data Summary
+
+ id - Photo ids of the photos
+ Descriptions - Description of the post/photo 
+ Interest_Rate - The interest rate fixed by the bank for each customer
+ faves - number of favorites or likes of a photo
+ Comments - number of comments of a photo
+ Views - Number of views of a photo
+ Engagement_Score - Engagement score of each photo
+
+```{r}
+plot(cars)
+```
+
+## 4.Read the file
+
+```{r}
+install.packages("stringr")
+library(stringr)
+data<- read.csv("cars_ship_plane.csv", header = TRUE)
+```
+
+```{r}
+# Install and load necessary libraries if not already installed
+if (!require("tidyverse")) 
+```
+
+
+## 5.Preprocessing 
+
+```{r}
+# # Install the tidyverse package if not already installed
+# if (!requireNamespace("tidyverse", quietly = TRUE)) {
+#   install.packages("tidyverse")
+# }
+
+# Load the tidyverse package
+library(tidyverse)
+
+# # Your data
+# data <- read.csv("your_file.csv")
+
+# Remove rows with empty values in Caption, Photo_URL, and Tags columns
+df_cleaned <- data %>%
+  drop_na(Caption, Photo_URL, Tags)
+# Print the cleaned data frame
+print(df_cleaned)
+
+```
+
+## 6. Data Visualization
+
+```{r}
+# Install and load necessary libraries if not already installed
+if (!require("tidyverse")) install.packages("tidyverse")
+
+# Assuming 'data' is already loaded with your dataset
+
+# Your existing code for extracting labels goes here
+
+# Create a bar plot of label frequencies
+label_counts <- table(df_cleaned$Label)
+label_counts_df <- data.frame(Label = names(label_counts), Count = as.numeric(label_counts))
+
+# Print label counts
+print(label_counts_df)
+
+# Plotting using ggplot2
+library(ggplot2)
+ggplot(label_counts_df, aes(x = Label, y = Count, fill = Label)) +
+  geom_bar(stat = "identity") +
+  labs(title = "Distribution of Labels",
+       x = "Label",
+       y = "Count") +
+  theme_minimal()
+```
+
+
+## 7. 
+
+```{r}
+# Load the data from CSV file
+data2 <- read.csv('cars_ship_plane.csv')
+
+# Create a folder for images
+output_folder_flickrimages <- "/CIS8398/flickerimages"
+dir.create(output_folder_flickrimages, showWarnings = FALSE)
+
+# Initialize a counter for the total number of images downloaded
+total_images_downloaded <- 0
+
+# Iterate through each URL and download the corresponding image
+for (i in seq_along(data2$Photo_URL)) {
+  url <- data2$Photo_URL[i]
+  label <- data2$Label[i]
+  photo_id <- data2$Photo_ID[i]
+
+  # Create a subfolder for each label
+  label_folder <- file.path(output_folder_flickrimages, label)
+  dir.create(label_folder, showWarnings = FALSE)
+
+  # Set the file path and name for the downloaded image
+  file_path <- file.path(label_folder, paste0(photo_id, "_", label, ".jpg"))
+
+  tryCatch({
+    # Download the image and save it to the specified file path
+    download.file(url, destfile = file_path, mode = "wb", quiet = TRUE)
+
+    # Increment the total count of images downloaded
+    total_images_downloaded <- total_images_downloaded + 1
+  }, error = function(e) {
+    # Print an error message if the download fails
+    cat(sprintf("Error downloading image %d from URL %s: %s\n", i, url, e$message))
+  })
+}
+
+# Print the final count of total images downloaded
+cat("Total images downloaded:", total_images_downloaded, "\n")
+```
+
+```{r}
+# Set your dataset paths on local desktop
+car_dir <- "C:/CIS8398/flickerimages/car"
+ship_dir <- "C:/CIS8398/flickerimages/ship"
+plane_dir <- "C:/CIS8398/flickerimages/plane"
+
+# Set your output paths for train and test on local desktop
+train_dir <- "C:/CIS8398/flickerimages/train"
+test_dir <- "C:/CIS8398/flickerimages/test"
+
+# Function to split images into train and test
+split_images <- function(vehicle_dir, vehicle_name) {
+  # Get all image files in the vehicle folder
+  image_files <- list.files(vehicle_dir, pattern = "\\.(jpg|jpeg|png)$", full.names = TRUE)
+
+  # Randomly shuffle the image files
+  set.seed(123)  # Set seed for reproducibility
+  shuffled_files <- sample(image_files)
+
+  # Determine the split point for train and test
+  split_point <- round(0.8 * length(shuffled_files))
+
+  # Create subfolders in train and test for the vehicle
+  vehicle_train_dir <- file.path(train_dir, vehicle_name)
+  vehicle_test_dir <- file.path(test_dir, vehicle_name)
+
+  dir.create(vehicle_train_dir, showWarnings = FALSE, recursive = TRUE)
+  dir.create(vehicle_test_dir, showWarnings = FALSE, recursive = TRUE)
+
+  # Copy images to train folder
+  file.copy(shuffled_files[1:split_point], vehicle_train_dir)
+
+  # Copy images to test folder
+  file.copy(shuffled_files[(split_point + 1):length(shuffled_files)], vehicle_test_dir)
+}
+
+# Split images for each vehicle using local paths
+split_images(car_dir, "car")
+split_images(ship_dir, "ship")
+split_images(plane_dir, "plane")
+
+# Print a message indicating successful split
+cat("Images successfully split into train and test folders.\n")
+
+
+```
+
+```{r}
+library(keras)
+library(reticulate)
+library(tidyverse)
+
+# Set your dataset paths for car, ship, and plane
+train_dir <- "C:/CIS8398/flickerimages/train"
+test_dir <- "C:/CIS8398/flickerimages/test"
+
+# Building your network
+model_vehicle <- keras_model_sequential() %>%
+  layer_conv_2d(filters = 32, kernel_size = c(3, 3), activation = "relu",
+                input_shape = c(150, 150, 3)) %>%
+  layer_max_pooling_2d(pool_size = c(2, 2)) %>%
+  layer_conv_2d(filters = 64, kernel_size = c(3, 3), activation = "relu") %>%
+  layer_max_pooling_2d(pool_size = c(2, 2)) %>%
+  layer_conv_2d(filters = 128, kernel_size = c(3, 3), activation = "relu") %>%
+  layer_max_pooling_2d(pool_size = c(2, 2)) %>%
+  layer_conv_2d(filters = 128, kernel_size = c(3, 3), activation = "relu") %>%
+  layer_max_pooling_2d(pool_size = c(2, 2)) %>%
+  layer_flatten() %>%
+  layer_dense(units = 512, activation = "relu") %>%
+  layer_dense(units = 3, activation = "softmax")  # 3 output units for car, ship, plane
+
+model_vehicle %>% compile(
+  optimizer = "adam",
+  loss = "categorical_crossentropy",  # Use categorical crossentropy for multi-class classification
+  metrics = c("accuracy")
+)
+
+# Data preprocessing
+train_datagen <- image_data_generator(rescale = 1/255)
+test_datagen <- image_data_generator(rescale = 1/255)
+
+train_generator <- flow_images_from_directory(
+  train_dir,
+  train_datagen,
+  target_size = c(150, 150),
+  batch_size = 20,
+  class_mode = "categorical",
+  classes = c("car", "ship", "plane")  # Specify classes for multi-class
+)
+
+test_generator <- flow_images_from_directory(
+  test_dir,
+  test_datagen,
+  target_size = c(150, 150),
+  batch_size = 20,
+  class_mode = "categorical",
+  classes = c("car", "ship", "plane")  # Specify classes for multi-class
+)
+
+```
+
+```{r}
+
+# Fit the model to the data using the generator
+history_vehicle <- model_vehicle %>%
+  fit_generator(
+    train_generator,
+    steps_per_epoch = as.integer(10),  # Replace with steps per epoch
+    epochs = 10,
+    validation_data = test_generator,
+    validation_steps = as.integer(10)  # Replace with validation steps
+  )
+
+# Plotting the model history
+plot(history_vehicle)
+
+```
+
+```{r}
+# Assuming you have already loaded your model and have test data
+test_datagen <- image_data_generator(rescale = 1/255)
+test_generator <- flow_images_from_directory(
+  'C:/CIS8398/flickerimages/test',
+  test_datagen,
+  target_size = c(150, 150),
+  batch_size = 20,
+  class_mode = 'categorical'  # Change this to categorical for multi-class
+)
+
+# Evaluate the model on the test data
+eval_result <- model_vehicle %>% evaluate(test_generator)
+
+# Print the test loss
+cat("Test accuracy:", eval_result[[2]], "\n")
+```
+
+```{r}
+library(keras)
+library(reticulate)
+library(tidyverse)
+
+# Set your dataset paths for car, ship, and plane
+train_dir <- "C:/CIS8398/flickerimages/train"
+test_dir <- "C:/CIS8398/flickerimages/test"
+
+# Building your network
+model_vehicle1 <- keras_model_sequential() %>%
+  layer_conv_2d(filters = 32, kernel_size = c(3, 3), activation = "relu",
+                input_shape = c(150, 150, 3)) %>%
+  layer_max_pooling_2d(pool_size = c(2, 2)) %>%
+  layer_conv_2d(filters = 64, kernel_size = c(3, 3), activation = "relu") %>%
+  layer_max_pooling_2d(pool_size = c(2, 2)) %>%
+  layer_conv_2d(filters = 128, kernel_size = c(3, 3), activation = "relu") %>%
+  layer_max_pooling_2d(pool_size = c(2, 2)) %>%
+  layer_conv_2d(filters = 128, kernel_size = c(3, 3), activation = "relu") %>%
+  layer_max_pooling_2d(pool_size = c(2, 2)) %>%
+  layer_flatten() %>%
+  layer_dense(units = 512, activation = "relu") %>%
+  layer_dense(units = 3, activation = "softmax")  # 3 output units for car, ship, plane
+
+model_vehicle1 %>% compile(
+  optimizer = "adam",
+  loss = "categorical_crossentropy",  # Use categorical crossentropy for multi-class classification
+  metrics = c("accuracy")
+)
+
+# Data preprocessing
+train_datagen1 <- image_data_generator(
+  rescale = 1/255,
+  rotation_range = 40,
+  width_shift_range = 0.2,
+  height_shift_range = 0.2,
+  shear_range = 0.2,
+  zoom_range = 0.2,
+  horizontal_flip = TRUE,
+  fill_mode = "nearest"
+)
+
+test_datagen1 <- image_data_generator(rescale = 1/255)
+
+train_generator1 <- flow_images_from_directory(
+  train_dir,
+  train_datagen1,
+  target_size = c(150, 150),
+  batch_size = 20,
+  class_mode = "categorical",
+  classes = c("car", "ship", "plane")  # Specify classes for multi-class
+)
+
+test_generator1 <- flow_images_from_directory(
+  test_dir,
+  test_datagen1,
+  target_size = c(150, 150),
+  batch_size = 20,
+  class_mode = "categorical",
+  classes = c("car", "ship", "plane")  # Specify classes for multi-class
+)
+
+```
+
+```{r}
+# Fit the model to the data using the generator
+history_vehicle1 <- model_vehicle1 %>%
+  fit_generator(
+    train_generator1,
+    steps_per_epoch = as.integer(10),  # Replace with steps per epoch
+    epochs = 10,
+    validation_data = test_generator1,
+    validation_steps = as.integer(10)  # Replace with validation steps
+  )
+
+# Plotting the model history
+plot(history_vehicle1)
+```
+
+```{r}
+# Assuming you have already loaded your model and have test data
+test_datagen <- image_data_generator(rescale = 1/255)
+test_generator <- flow_images_from_directory(
+  'C:/CIS8398/flickerimages/test',
+  test_datagen1,
+  target_size = c(150, 150),
+  batch_size = 30,
+  class_mode = 'categorical'  # Change this to categorical for multi-class
+)
+
+# Evaluate the model on the test data
+eval_result1 <- model_vehicle1 %>% evaluate(test_generator)
+
+# Print the test loss
+cat("Test accuracy:", eval_result1[[2]], "\n")
+```
