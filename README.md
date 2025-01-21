@@ -1,7 +1,6 @@
-# Image-Captioning-System
 # Project Title
 
-An insightful and descriptive title for your project that summarizes its purpose and goals.
+Image-Captioning-System
 
 ## Overview
 
